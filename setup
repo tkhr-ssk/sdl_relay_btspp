@@ -1,0 +1,5 @@
+#!/bin/bash
+
+BLUECOVE_LIB=bluecove-2.1.2.jar
+export CLASSPATH=$PWD:$BLUECOVE_LIB
+
