@@ -33,15 +33,22 @@ public class BtPcClient {
         OutputStream os = ((OutputConnection)connection).openOutputStream();
         InputStream is = ((InputConnection)connection).openInputStream();
 
-        System.out.println("Receivng...");
-        receive(is);
+//        System.out.println("Receivng...");
+//        receive(is);
 
+        BtRelayThread btrthread = new BtRelayThread(is);
+        Thread th = new Thread(btrthread);
+        th.start();
+
+        Thread.sleep(500);
         System.out.println("Sending...");
         sendSDLStart(os);
-	Thread.sleep(500);
+        Thread.sleep(500);
 
-        System.out.println("Receivng...");
-        receive(is);
+//        System.out.println("Receivng...");
+//        receive(is);
+
+        Thread.sleep(5000);
 
         System.out.println("Closing...");
         try {
@@ -99,3 +106,48 @@ public class BtPcClient {
     }
 }
 
+class BtRelayThread implements Runnable {
+  private InputStream is;
+  public BtRelayThread(InputStream _is) {
+    is = _is;
+  }
+  public void run(){
+    System.out.println("start");
+    byte[] recvBuff = new byte[4096];
+    int n=0;
+    for(;;)
+    {
+        try {
+            n = is.read(recvBuff);
+            System.out.print("read:");
+            System.out.println(n);
+        } catch (IOException e) {
+            e.printStackTrace();
+            break;
+        }
+        if ( n<=0 )
+        {
+            System.out.println("Close InputStream.");
+            break;
+        }
+
+        // Output HexDump
+        for (int i = 0; i < n; i++) {
+            System.out.printf(" %02x", recvBuff[i]);
+            if (15==(i%16))System.out.println();
+        }
+        System.out.println();
+
+        // Output Ascii
+        for (int i = 0; i < n; i++) {
+            if( 0x20 <= recvBuff[i] && recvBuff[i] <= 0x7e)
+            {
+            System.out.printf("%c", recvBuff[i]);
+            }else{
+            System.out.print("?");
+            }
+        }
+        System.out.println();
+    }
+  }
+}
