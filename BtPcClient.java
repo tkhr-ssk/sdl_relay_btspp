@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.*;
 
 import javax.microedition.io.Connection;
 import javax.microedition.io.Connector;
@@ -11,12 +12,21 @@ public class BtPcClient {
 
     public static void main(String[] args) throws Exception {
         String connectionURL = "";
+        String relayIP = "127.0.0.1";
+        String relayPort = "12345";
 
         if ((args != null) && (args.length > 0)) {
             connectionURL = args[0];
         }else{
             System.out.println("usage: java BtPcClient btspp://1234ABCD5678:1");
             return;
+        }
+
+        if ((args != null) && (args.length > 1)) {
+            relayIP = args[1];
+        }
+        if ((args != null) && (args.length > 2)) {
+            relayPort = args[2];
         }
 
         System.out.println(connectionURL);
@@ -30,23 +40,42 @@ public class BtPcClient {
         }
         System.out.println("Connected");
 
+        // TCP接続
+        Socket socket = null;
+        try{
+          System.out.println("Connect TCP "+relayIP+":"+relayPort);
+          socket = new Socket(relayIP, Integer.parseInt(relayPort));
+        } catch (Exception ex) {
+          ex.printStackTrace();
+        }
+
         OutputStream os = ((OutputConnection)connection).openOutputStream();
         InputStream is = ((InputConnection)connection).openInputStream();
 
-//        System.out.println("Receivng...");
-//        receive(is);
+        if ( null == socket ) {
+          BtRelayThread btrthread = new BtRelayThread(is);
+          Thread th = new Thread(btrthread);
+          th.start();
+        } else {
+          OutputStream sos = socket.getOutputStream();
+          InputStream sis = socket.getInputStream();
+          BtRelayThread btrthread = new BtRelayThread(is, sos);
+          BtRelayThread btrthreadr = new BtRelayThread(sis, os);
+          Thread th = new Thread(btrthread);
+          Thread thr = new Thread(btrthreadr);
+          th.start();
+          thr.start();
+          th.join();
+          thr.join();
+        }
 
-        BtRelayThread btrthread = new BtRelayThread(is);
-        Thread th = new Thread(btrthread);
-        th.start();
-
-        Thread.sleep(500);
-        System.out.println("Sending...");
-        sendSDLStart(os);
-        Thread.sleep(500);
-
-//        System.out.println("Receivng...");
-//        receive(is);
+        if ( null == socket )
+        {
+          Thread.sleep(500);
+          System.out.println("Sending...");
+          sendSDLStart(os);
+          Thread.sleep(500);
+        }
 
         Thread.sleep(5000);
 
@@ -60,6 +89,7 @@ public class BtPcClient {
         } catch (Exception ioe) {
         }
 
+        if (socket != null ) socket.close();
         System.out.println("Finished");
     }
 
@@ -108,8 +138,14 @@ public class BtPcClient {
 
 class BtRelayThread implements Runnable {
   private InputStream is;
+  private OutputStream os;
   public BtRelayThread(InputStream _is) {
     is = _is;
+    os = null;
+  }
+  public BtRelayThread(InputStream _is, OutputStream _os) {
+    is = _is;
+    os = _os;
   }
   public void run(){
     System.out.println("start");
@@ -148,6 +184,15 @@ class BtRelayThread implements Runnable {
             }
         }
         System.out.println();
+        if ( os != null )
+        {
+          try {
+            os.write(recvBuff, 0, n);
+          } catch (Exception e) {
+            e.printStackTrace();
+            os = null;
+          }
+        }
     }
   }
 }
