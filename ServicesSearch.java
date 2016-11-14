@@ -10,18 +10,20 @@ import javax.bluetooth.*;
 public class ServicesSearch {
 
     public static final Vector<String> serviceFound = new Vector<String>();
-    
+
     public static void main(String[] args) throws IOException, InterruptedException {
 
-	RemoteDevice remoteDevice = null;
+        RemoteDevice remoteDevice = null;
+        Vector<RemoteDevice> remoteDeviceList = new Vector<RemoteDevice>();
         if ((args != null) && (args.length > 0)) {
             // アドレスが指定された場合、登録済みのデバイスから一致するデバイスを検索する
             RemoteDevice[] list = LocalDevice.getLocalDevice().getDiscoveryAgent().retrieveDevices(DiscoveryAgent.PREKNOWN);
             for( int i=0; i< list.length; i++) {
               System.out.println("Preknown: " + list[i].getBluetoothAddress() + " " + list[i].getFriendlyName(false));
-              if( args[0].equals(list[i].getBluetoothAddress()) )
+              if( args[0].equals(list[i].getBluetoothAddress()) || args[0].equals("0") )
               {
                 remoteDevice = list[i];
+                remoteDeviceList.add(list[i]);
                 continue;
               }
             }
@@ -86,10 +88,13 @@ public class ServicesSearch {
 
         if ( remoteDevice != null )
         {
-            synchronized(serviceSearchCompletedEvent) {
-                System.out.println("search services on " + remoteDevice.getBluetoothAddress() + " " + remoteDevice.getFriendlyName(false));
-                LocalDevice.getLocalDevice().getDiscoveryAgent().searchServices(attrIDs, searchUuidSet, remoteDevice, listener);
-                serviceSearchCompletedEvent.wait();
+            for(Enumeration en = remoteDeviceList.elements(); en.hasMoreElements(); ) {
+                RemoteDevice btDevice = (RemoteDevice)en.nextElement();
+                synchronized(serviceSearchCompletedEvent) {
+                    System.out.println("search services on " + btDevice.getBluetoothAddress() + " " + btDevice.getFriendlyName(false));
+                    LocalDevice.getLocalDevice().getDiscoveryAgent().searchServices(attrIDs, searchUuidSet, btDevice, listener);
+                    serviceSearchCompletedEvent.wait();
+                }
             }
             return;
         }
