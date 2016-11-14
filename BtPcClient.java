@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.*;
+import java.text.SimpleDateFormat;
 
 import javax.microedition.io.Connection;
 import javax.microedition.io.Connector;
@@ -10,7 +11,7 @@ import javax.microedition.io.OutputConnection;
 
 public class BtPcClient {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws IOException, InterruptedException {
         String connectionURL = "";
         String relayIP = "127.0.0.1";
         String relayPort = "12345";
@@ -32,7 +33,7 @@ public class BtPcClient {
         System.out.println(connectionURL);
         System.out.println("Connecting...");
 
-        // サーバー側のデバイスからコネクションを取得する
+        // connect BT(SPP) 
         Connection connection = Connector.open(connectionURL);
         if (connection == null) {
             System.out.println("Connect fail");
@@ -40,7 +41,7 @@ public class BtPcClient {
         }
         System.out.println("Connected");
 
-        // TCP接続
+        // connect TCP
         Socket socket = null;
         try{
           System.out.println("Connect TCP "+relayIP+":"+relayPort);
@@ -54,6 +55,7 @@ public class BtPcClient {
 
         if ( null == socket ) {
           BtRelayThread btrthread = new BtRelayThread(is);
+          btrthread.setName("BT  "+connectionURL);
           Thread th = new Thread(btrthread);
           th.start();
         } else {
@@ -61,6 +63,8 @@ public class BtPcClient {
           InputStream sis = socket.getInputStream();
           BtRelayThread btrthread = new BtRelayThread(is, sos);
           BtRelayThread btrthreadr = new BtRelayThread(sis, os);
+          btrthread.setName("BT  "+connectionURL);
+          btrthreadr.setName("TCP "+connectionURL);
           Thread th = new Thread(btrthread);
           Thread thr = new Thread(btrthreadr);
           th.start();
@@ -102,97 +106,97 @@ public class BtPcClient {
             e.printStackTrace();
         }
     }
+}
 
-    static byte[] receive(InputStream is) {
-        byte[] recvBuff = new byte[4096];
-        int n=0;
-        try {
-            n = is.read(recvBuff);
-            System.out.print("read:");
-            System.out.println(n);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // Output HexDump
-        for (int i = 0; i < n; i++) {
-            System.out.printf(" %02x", recvBuff[i]);
-            if (15==(i%16))System.out.println(); 
-        }
-        System.out.println();
-
-        // Output Ascii
-        for (int i = 0; i < n; i++) {
-            if( 0x20 <= recvBuff[i] && recvBuff[i] <= 0x7e)
-            {
-            System.out.printf("%c", recvBuff[i]);
-            }else{
-            System.out.print("?");
-            }
-        }
-        System.out.println();
-
-        return recvBuff;
+class DebugLog {
+  private static final SimpleDateFormat FORMATTER = new SimpleDateFormat("[yyyy-MM-dd HH:mm:ss] ");
+  private static String getDateTime(){
+        return FORMATTER.format( new java.util.Date() );
+  }
+  public static void print(String s) {
+    System.out.print(getDateTime()+s);
+  }
+  public static void println(String s) {
+    System.out.println(getDateTime()+s);
+  }
+  public static void DumpHex(byte[] b, int n) {
+    // Output HexDump
+    for (int i = 0; i < n; i++) {
+      System.out.printf(" %02x", b[i]);
+      if (15==(i%16)) System.out.println();
+      if (255<=i) {
+        System.out.println("...");
+        break;
+      }
     }
+    System.out.println();
+  }
+  public static void DumpAscii(byte[] b, int n) {
+    // Output Ascii
+    for (int i = 0; i < n; i++) {
+      if(( 0x09 <= b[i] && b[i] <= 0x10)
+       ||( 0x20 <= b[i] && b[i] <= 0x7e)) {
+        System.out.printf("%c", b[i]);
+      }else{
+        System.out.print("?");
+      }
+      if (1023<=i) {
+        System.out.println();
+        System.out.println("...");
+        break;
+      }
+    }
+    System.out.println();
+  }
 }
 
 class BtRelayThread implements Runnable {
   private InputStream is;
   private OutputStream os;
+  private String name;
   public BtRelayThread(InputStream _is) {
     is = _is;
     os = null;
+    name = "-";
   }
   public BtRelayThread(InputStream _is, OutputStream _os) {
     is = _is;
     os = _os;
+    name = "-";
+  }
+  public void setName(String _name) {
+    name = _name;
   }
   public void run(){
-    System.out.println("start");
+    DebugLog.println( this.name + " start");
     byte[] recvBuff = new byte[4096];
     int n=0;
-    for(;;)
-    {
+    for(;;) {
+      try {
+        n = is.read(recvBuff);
+        DebugLog.println( this.name + " read:"+n);
+      } catch (IOException e) {
+        DebugLog.println( this.name + " read() Exception");
+        e.printStackTrace();
+        break;
+      }
+      if ( n<=0 ) {
+        DebugLog.println( this.name + " Close InputStream.");
+        break;
+      }
+
+      //DebugLog.DumpHex(recvBuff, n);
+      //DebugLog.DumpAscii(recvBuff, n);
+
+      if ( os != null ) {
         try {
-            n = is.read(recvBuff);
-            System.out.print("read:");
-            System.out.println(n);
-        } catch (IOException e) {
-            e.printStackTrace();
-            break;
+          os.write(recvBuff, 0, n);
+        } catch (Exception e) {
+          DebugLog.println( this.name + " write() Exception");
+          e.printStackTrace();
+          os = null;
         }
-        if ( n<=0 )
-        {
-            System.out.println("Close InputStream.");
-            break;
-        }
-
-        // Output HexDump
-        for (int i = 0; i < n; i++) {
-            System.out.printf(" %02x", recvBuff[i]);
-            if (15==(i%16))System.out.println();
-        }
-        System.out.println();
-
-        // Output Ascii
-        for (int i = 0; i < n; i++) {
-            if( 0x20 <= recvBuff[i] && recvBuff[i] <= 0x7e)
-            {
-            System.out.printf("%c", recvBuff[i]);
-            }else{
-            System.out.print("?");
-            }
-        }
-        System.out.println();
-        if ( os != null )
-        {
-          try {
-            os.write(recvBuff, 0, n);
-          } catch (Exception e) {
-            e.printStackTrace();
-            os = null;
-          }
-        }
+      }
     }
   }
 }
