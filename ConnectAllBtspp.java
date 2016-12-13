@@ -5,7 +5,11 @@ import javax.bluetooth.*;
 
 public class ConnectAllBtspp {
   public static void main(String[] args) throws IOException, InterruptedException {
-    ServicesSearch.main(args);
+    if ( args.length > 0 ) {
+      ServicesSearch.main(args);
+    } else {
+      ServicesSearch.main(new String[]{"0"});
+    }
     for(Enumeration en = ServicesSearch.serviceFound.elements(); en.hasMoreElements(); ) {
       String url = (String)en.nextElement();
       url = url.replaceAll(";.*", "");
