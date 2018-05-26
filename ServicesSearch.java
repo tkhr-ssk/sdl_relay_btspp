@@ -21,6 +21,7 @@ public class ServicesSearch {
             if ( list == null )
             {
                 System.out.println("Not Found Devices. " +args[0]);
+                return;
             }
             for( int i=0; i< list.length; i++) {
               System.out.println("Preknown: " + list[i].getBluetoothAddress() + " " + list[i].getFriendlyName(false));
