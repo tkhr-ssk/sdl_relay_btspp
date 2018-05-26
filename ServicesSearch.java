@@ -18,6 +18,10 @@ public class ServicesSearch {
         if ((args != null) && (args.length > 0)) {
             // アドレスが指定された場合、登録済みのデバイスから一致するデバイスを検索する
             RemoteDevice[] list = LocalDevice.getLocalDevice().getDiscoveryAgent().retrieveDevices(DiscoveryAgent.PREKNOWN);
+            if ( list == null )
+            {
+                System.out.println("Not Found Devices. " +args[0]);
+            }
             for( int i=0; i< list.length; i++) {
               System.out.println("Preknown: " + list[i].getBluetoothAddress() + " " + list[i].getFriendlyName(false));
               if( args[0].equals(list[i].getBluetoothAddress()) || args[0].equals("0") )

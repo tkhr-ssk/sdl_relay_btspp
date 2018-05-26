@@ -47,7 +47,8 @@ public class BtPcClient {
           System.out.println("Connect TCP "+relayIP+":"+relayPort);
           socket = new Socket(relayIP, Integer.parseInt(relayPort));
         } catch (Exception ex) {
-          ex.printStackTrace();
+          System.out.println("[ERROR] Connect TCP "+relayIP+":"+relayPort+" failed.");
+          //ex.printStackTrace();
         }
 
         OutputStream os = ((OutputConnection)connection).openOutputStream();
@@ -78,6 +79,7 @@ public class BtPcClient {
           Thread.sleep(500);
           System.out.println("Sending...");
           sendSDLStart(os);
+          //sendSDLStartV5(os);
           Thread.sleep(500);
         }
 
@@ -101,9 +103,32 @@ public class BtPcClient {
         byte[] sendBuff = {0x40, 0x07, 0x02, 0x01, 0x00, 0x00, 0x00, 0x04,
           0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01};
         try {
+            //DebugLog.DumpHex(sendBuff, sendBuff.length);
             os.write(sendBuff);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("[ERROR] Sdl Start Data write fail.");
+            //e.printStackTrace();
+        }
+    }
+
+    static void sendSDLStartV5(OutputStream os) {
+        byte[] sendBuff = {
+          0x50, 0x07, 0x02, 0x01, 0x00, 0x00, 0x00, 0x39,
+          0x00, 0x00, 0x00, 0x03, 0x39, 0x00, 0x00, 0x00,
+          0x10, 0x68, 0x61, 0x73, 0x68, 0x49, 0x64, 0x00,
+          0x0f, 0x00, 0x01, 0x00, 0x12, 0x6d, 0x74, 0x75,
+          0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x02, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63,
+          0x6f, 0x6c, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f,
+          0x6e, 0x00, 0x06, 0x00, 0x00, 0x00, 0x35, 0x2e,
+          0x30, 0x2e, 0x30, 0x00, 0x00};
+        try {
+            //DebugLog.DumpHex(sendBuff, sendBuff.length);
+            //DebugLog.DumpAscii(sendBuff, sendBuff.length);
+            os.write(sendBuff);
+        } catch (IOException e) {
+            System.out.println("[ERROR] Sdl Start Data write fail.");
+            //e.printStackTrace();
         }
     }
 }
@@ -177,7 +202,7 @@ class BtRelayThread implements Runnable {
         DebugLog.println( this.name + " read:"+n);
       } catch (IOException e) {
         DebugLog.println( this.name + " read() Exception");
-        e.printStackTrace();
+        //e.printStackTrace();
         break;
       }
       if ( n<=0 ) {
@@ -193,7 +218,7 @@ class BtRelayThread implements Runnable {
           os.write(recvBuff, 0, n);
         } catch (Exception e) {
           DebugLog.println( this.name + " write() Exception");
-          e.printStackTrace();
+          //e.printStackTrace();
           os = null;
         }
       }
